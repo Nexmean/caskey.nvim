@@ -31,6 +31,8 @@ use {
 ```
 
 ## ⚙️ Configuration
+
+Define your keymaps:
 ```lua
 -- user/mappings.lua
 return {
@@ -97,4 +99,11 @@ return {
     },
   }
 }
+```
+
+And then setup them with caskey:
+```lua
+require("caskey").setup(require("user.mappings"))
+-- or if you want which-key integration:
+require("caskey.wk").setup(require("user.mappings"))
 ```
