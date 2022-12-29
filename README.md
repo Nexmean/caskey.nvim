@@ -15,7 +15,7 @@ Declarative **cas**cade **key** mappings configuration
 {
   "Nexmean/caskey.nvim",
   dependencies = {
-    "folke/which-key", -- optional, only if you want whick-key integration
+    "folke/which-key", -- optional, only if you want which-key integration
   },
 }
 ```
@@ -25,7 +25,7 @@ Declarative **cas**cade **key** mappings configuration
 use {
   "Nexmean/caskey.nvim",
   requires = {
-    "folke/which-key", -- optional, only if you want whick-key integration
+    "folke/which-key", -- optional, only if you want which-key integration
   },
 }
 ```
