@@ -1,11 +1,11 @@
 -- which-key integration
 local internal = require("caskey.internal")
 local utils = require("caskey.utils")
-local wk = require("which-key")
 
 local M = vim.tbl_extend("force", utils, {})
 
 function M.setup(config)
+  local wk = require("which-key")
   local global_conf = internal.empty_global_conf()
   internal.fill {
     wk = true,
