@@ -10,6 +10,7 @@ end
 
 local opt_keys = {
   "act",
+  "buffer",
   "buf_local",
   "buf_local_extend",
   "desc",
@@ -47,7 +48,8 @@ local function mk_opts(config, parent_opts)
     noremap = vim.F.if_nil(config.noremap, parent_opts.noremap),
     nowait = vim.F.if_nil(config.nowait, parent_opts.nowait),
     silent = vim.F.if_nil(config.silent, parent_opts.silent),
-    unique = vim.F.if_nil(config.unique, parent_opts.unique)
+    unique = vim.F.if_nil(config.unique, parent_opts.unique),
+    buffer = vim.F.if_nil(config.buffer, parent_opts.buffer)
   }
 end
 
