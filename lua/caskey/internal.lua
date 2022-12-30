@@ -137,7 +137,7 @@ end
 -- fills normalized global keymaps config and sets autocommands for buf local keymaps
 function M.fill(args)
   local wk = args.wk
-  local global_conf = args.global_conf
+  local global_config = args.global_config
   local config = args.config
   local parent_modes = args.parent_modes or {}
   local parent_opts = args.parent_opts or {}
@@ -157,7 +157,7 @@ function M.fill(args)
     end
   else
     for mode, act in pairs(acts) do
-      global_conf[mode][lhs] = act
+      global_config[mode][lhs] = act
     end
   end
 
@@ -171,7 +171,7 @@ function M.fill(args)
       end
       M.fill {
         wk = wk,
-        global_conf = global_conf,
+        global_config = global_config,
         config = c,
         lhs = new_lhs,
         parent_modes = modes,
@@ -180,11 +180,9 @@ function M.fill(args)
       }
     end
   end
-
-  return global_conf
 end
 
-function M.empty_global_conf()
+function M.empty_global_config()
   return {
     n = {},
     v = {},
