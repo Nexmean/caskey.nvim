@@ -95,16 +95,15 @@ return {
 
       mode = "n"
 
-      s = {act = gs.stage_hunk, desc = "stage hunk"},
-      r = {act = gs.reset_hunk, desc = "rest hunk"},
-      S = {act = gs.stage_buffer, desc = "stage buffer"},
+      s = {act = gs.stage_hunk     , desc = "stage hunk"},
+      r = {act = gs.reset_hunk     , desc = "rest hunk"},
+      S = {act = gs.stage_buffer   , desc = "stage buffer"},
       u = {act = gs.undo_stage_hunk, desc = "unstage hunk"},
-      d = {act = gs.preview_hunk, desc = "preview hunk"},
-      b = {act = gs.blame_line, desc = "blame line"},
+      d = {act = gs.preview_hunk   , desc = "preview hunk"} ,
+      b = {act = gs.blame_line     , desc = "blame line"},
     }
   end,
 
-  -- extend mode or buffer local configuration
   {
     mode = "n",
     buf_local = {{"LspAttach"}},
@@ -112,6 +111,7 @@ return {
     ["<C-s>"] = {
       act = ck.cmd "SymbolsOutline",
       desc = "toggle outline",
+      -- extend mode or buffer local configuration
       mode_extend = "v",
       buf_local_extend = {ck.ft "Outline"},
     },
