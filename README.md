@@ -106,7 +106,7 @@ return {
 
   {
     mode = "n",
-    buf_local = {{"LspAttach"}},
+    buf_local = {{event = "LspAttach"}},
     ["gd"] = {act = ck.cmd "Telescope lsp_definitions", desc = "lsp definition"},
     ["<C-s>"] = {
       act = ck.cmd "SymbolsOutline",
