@@ -166,9 +166,18 @@ function M.fill(args)
       local new_lhs
       if type(k) == "string" then
         new_lhs = lhs .. k
-      else
+      elseif type(k) == "number" then
         new_lhs = lhs
+      else
+        error(string.format("Expected number or string as config key, but got %s", type(k)))
       end
+
+      if type(c) == "function" then
+        c = c()
+      elseif type(c) ~= "table" then
+        error(string.format("Expected table or function as config body, but got %s", type(c)))
+      end
+
       M.fill {
         wk = wk,
         global_config = global_config,
