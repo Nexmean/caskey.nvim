@@ -35,43 +35,43 @@ use {
 Define your keymaps:
 ```lua
 -- user/mappings.lua
+local ck = require("caskey")
+
 return {
   -- options are inherits so you can define most regular at the top of keymaps config
   mode = {"n", "v"},
 
   -- Simple keymap with `caskey.cmd` helper and mode override
-  ["<Esc>"] = {act = caskey.cmd "noh", desc = "no highlight", mode = "n"},
+  ["<Esc>"] = {act = ck.cmd "noh", desc = "no highlight", mode = "n"},
 
   -- group keymaps to reuse options or just for config structuring
   {
     mode = {"i", "t", "c"},
 
-    {
-      ["<C-a>"] = {act = "<Home>"  , desc = "Beginning of line"},
-      ["<C-e>"] = {act = "<End>"   , desc = "End of line"},
-      ["<C-f>"] = {act = "<Right>" , desc = "Move forward"},
-      ["<C-b>"] = {act = "<Left>"  , desc = "Move back"},
-      -- override options
-      ["<C-d>"] = {act = "<Delete>", desc = "Delete next character", mode = {"i", "c"}},
-    },
+    ["<C-a>"] = {act = "<Home>"  , desc = "Beginning of line"},
+    ["<C-e>"] = {act = "<End>"   , desc = "End of line"},
+    ["<C-f>"] = {act = "<Right>" , desc = "Move forward"},
+    ["<C-b>"] = {act = "<Left>"  , desc = "Move back"},
+    -- override options
+    ["<C-d>"] = {act = "<Delete>", desc = "Delete next character", mode = {"i", "c"}},
   },
 
   -- structure your keymaps as a tree and define which-key prefixes
   ["<leader>t"] = {
     name = "tabs",
 
-    n = {act = caskey.cmd "tabnew"                            , desc = "new tab"},
-    x = {act = caskey.cmd "tabclose"                          , desc = "close tab"},
-    t = {act = caskey.cmd "Telescope telescope-tabs list_tabs", desc = "list tabs"},
+    n = {act = ck.cmd "tabnew"                            , desc = "new tab"},
+    x = {act = ck.cmd "tabclose"                          , desc = "close tab"},
+    t = {act = ck.cmd "Telescope telescope-tabs list_tabs", desc = "list tabs"},
   },
 
   -- define buffer local keymaps
   ["q"] = {
-    act = caskey.cmd "close",
+    act = ck.cmd "close",
     desc = "close window",
     buf_local = {
-      caskey.ft "Outline",
-      caskey.bt {"quickfix", "help"},
+      ck.ft "Outline",
+      ck.bt {"quickfix", "help"},
       -- that is equivalent to:
       {
         event = "FileType",
@@ -86,16 +86,34 @@ return {
     },
   },
 
+  -- use functions as config bodies
+  ["<leader>h"] = function ()
+    local gs = require("gitsigns")
+
+    return {
+      name = "hunk",
+
+      mode = "n"
+
+      s = {act = gs.stage_hunk, desc = "stage hunk"},
+      r = {act = gs.reset_hunk, desc = "rest hunk"},
+      S = {act = gs.stage_buffer, desc = "stage buffer"},
+      u = {act = gs.undo_stage_hunk, desc = "unstage hunk"},
+      d = {act = gs.preview_hunk, desc = "preview hunk"},
+      b = {act = gs.blame_line, desc = "blame line"},
+    }
+  end,
+
   -- extend mode or buffer local configuration
   {
     mode = "n",
     buf_local = {{"LspAttach"}},
-    ["gd"] = {act = caskey.cmd "Telescope lsp_definitions", desc = "lsp definition"},
+    ["gd"] = {act = ck.cmd "Telescope lsp_definitions", desc = "lsp definition"},
     ["<C-s>"] = {
-      act = caskey.cmd "SymbolsOutline",
+      act = ck.cmd "SymbolsOutline",
       desc = "toggle outline",
       mode_extend = "v",
-      buf_local_extend = {caskey.ft "Outline"},
+      buf_local_extend = {ck.ft "Outline"},
     },
   }
 }
@@ -104,6 +122,8 @@ return {
 And then setup them with caskey:
 ```lua
 require("caskey").setup(require("user.mappings"))
--- or if you want which-key integration:
+```
+Or if you want which-key integration:
+```lua
 require("caskey.wk").setup(require("user.mappings"))
 ```
