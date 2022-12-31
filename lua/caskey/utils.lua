@@ -4,6 +4,12 @@ function M.cmd(command)
   return string.format("<cmd>%s<CR>", command)
 end
 
+function M.cmdfn(command)
+  return function ()
+    vim.cmd(command)
+  end
+end
+
 function M.filetype(filetypes)
   return { event = "FileType", pattern = filetypes }
 end
