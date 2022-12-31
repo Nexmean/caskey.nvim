@@ -1,11 +1,12 @@
+local lib = require "caskey.lib"
+
 local M = {}
 
-function M.set_keymap(mode, lhs, act, buf)
-  vim.keymap.set(mode, lhs, act[1], vim.tbl_extend(
-    "error",
-    act.opts,
-    {desc = act.desc, buffer = buf}
-  ))
+local function mk_empty_config()
+  return {
+    groups = {},
+    mappings = {},
+  }
 end
 
 local opt_keys = {
@@ -24,146 +25,163 @@ local opt_keys = {
   "unique",
 }
 
-local function tbl_concat(t)
-  local res = {}
-  for _, tt in ipairs(t) do
-    for _, v in ipairs(tt) do
-      res[#res+1] = v
-    end
-  end
-
-  return res
-end
-
-local function mk_modes(config, parent_modes)
+local function mk_modes(node, parent_modes)
   return vim.tbl_flatten {
-    config.mode or parent_modes or {},
-    config.mode_extend or {},
+    lib.coalesce { node.mode, parent_modes, {} },
+    lib.coalesce { node.mode_extend, {} },
   }
 end
 
-local function mk_opts(config, parent_opts)
+local function mk_opts(node, parent_opts)
+  parent_opts = lib.coalesce { parent_opts, {} }
   return {
-    expr = vim.F.if_nil(config.expr, parent_opts.expr),
-    noremap = vim.F.if_nil(config.noremap, parent_opts.noremap),
-    nowait = vim.F.if_nil(config.nowait, parent_opts.nowait),
-    silent = vim.F.if_nil(config.silent, parent_opts.silent),
-    unique = vim.F.if_nil(config.unique, parent_opts.unique),
-    buffer = vim.F.if_nil(config.buffer, parent_opts.buffer)
+    desc = lib.coalesce { node.desc, "" },
+    expr = lib.coalesce { node.expr, parent_opts.expr, false },
+    noremap = lib.coalesce { node.noremap, parent_opts.noremap, true },
+    nowait = lib.coalesce { node.nowait, parent_opts.nowait, false },
+    silent = lib.coalesce { node.silent, parent_opts.silent, true },
+    unique = lib.coalesce { node.unique, parent_opts.unique },
+    buffer = lib.coalesce { node.buffer, parent_opts.buffer },
   }
 end
 
-local function mk_buf_local(config, parent_buf_local)
-  return tbl_concat {
-    vim.F.if_nil(vim.F.if_nil(config.buf_local, parent_buf_local), {}),
-    vim.F.if_nil(config.buf_local_extend, {}),
+local function mk_when(node, parent_buf_local)
+  if node.buf_local == nil and node.buf_local_extend == nil then
+    return parent_buf_local or {}
+  end
+
+  return lib.concat {
+    lib.coalesce { node.buf_local, parent_buf_local, {} },
+    lib.coalesce { node.buf_local_extend, {} },
   }
 end
 
-local function mk_act(act, name, desc, opts, wk)
-  if wk == true then
-    return vim.tbl_extend("error", {act, desc, name = name}, opts)
-  else
-    return {act, desc = desc, name = name, opts = opts}
+local function mk_autocmd_key(trace, au)
+  if au.condition ~= nil then
+    return au
   end
+
+  local key = ""
+  if type(au.event) == "string" then
+    key = au.event .. ";"
+  elseif type(au.event) == "table" then
+    table.sort(au.event)
+    key = lib.intercalate(au.event, ",") .. ";"
+  else
+    lib.throw_error(
+      lib.concat { trace, "buf_local", "event" },
+      { "string", "table" },
+      "value",
+      au.event
+    )
+  end
+
+  if type(au.pattern) == "string" then
+    key = key .. au.pattern .. ";"
+  elseif type(au.pattern) == "table" then
+    table.sort(au.pattern)
+    key = key .. lib.intercalate(au.pattern, ",") .. ";"
+  elseif au.pattern == nil then
+    key = key .. ";"
+  else
+    lib.throw_error(
+      lib.concat { trace, "buf_local", "pattern" },
+      { "string", "table", "nil" },
+      "value",
+      au.pattern
+    )
+  end
+
+  if type(au.group) == "string" then
+    key = key .. au.group
+  elseif au.group == nil then
+  else
+    lib.throw_error(
+      lib.concat { trace, "buf_local", "group" },
+      { "string", "nil" },
+      "value",
+      au.event
+    )
+  end
+
+  return key
 end
 
-local function mk_acts(act, name, desc, modes, opts, wk)
-  if act == nil and (name == nil or not wk) then
-    return {}
+local function fill_groups(trace, config, lhs, modes, name)
+  if name == nil then
+    return
   end
 
-  local acts = {}
-
-  if type(act) == "table" then
-    for mode, mode_act in pairs(act) do
-      acts[mode] = mk_act(mode_act, name, desc, opts, wk)
-    end
-  else
+  if type(name) == "string" then
     for _, mode in ipairs(modes) do
-      acts[mode] = mk_act(act, name, desc, opts, wk)
-    end
-  end
-
-  return acts
-end
-
-local function register_buf_locals(conf, acts, lhs)
-  for _, buf_local in ipairs(conf) do
-    vim.api.nvim_create_autocmd(buf_local.event, {
-      pattern = buf_local.pattern,
-      callback = function (e)
-        local reqister_bindings = function ()
-          for mode, act in pairs(acts) do
-            M.set_keymap(mode, lhs, act, e.buf)
-          end
-        end
-        if buf_local.condition ~= nil then
-          if buf_local.condition(e) then
-            reqister_bindings()
-          end
-        else
-          reqister_bindings()
-        end
-      end
-    })
-  end
-end
-
-local function register_buf_locals_wk(conf, acts, lhs)
-  local wk = require("which-key")
-  for _, buf_local in ipairs(conf) do
-    vim.api.nvim_create_autocmd(buf_local.event, {
-      pattern = buf_local.pattern,
-      callback = function (e)
-        local reqister_bindings = function ()
-          for mode, act in pairs(acts) do
-            wk.register(
-              { [lhs] = vim.tbl_extend("error", {buffer = e.buf}, act) },
-              { mode = mode }
-            )
-          end
-        end
-        if buf_local.condition ~= nil then
-          if buf_local.condition(e) then
-            reqister_bindings()
-          end
-        else
-          reqister_bindings()
-        end
-      end
-    })
-  end
-end
-
--- fills normalized global keymaps config and sets autocommands for buf local keymaps
-function M.fill(args)
-  local wk = args.wk
-  local global_config = args.global_config
-  local config = args.config
-  local parent_modes = args.parent_modes or {}
-  local parent_opts = args.parent_opts or {}
-  local parent_buf_local = args.parent_buf_local or {}
-  local lhs = args.lhs or ""
-
-  local modes = mk_modes(config, parent_modes)
-  local opts = mk_opts(config, parent_opts)
-  local buf_local = mk_buf_local(config, parent_buf_local)
-  local acts = mk_acts(config.act, config.name, config.desc, modes, opts, wk)
-
-  if #buf_local > 0 then
-    if wk then
-      register_buf_locals_wk(buf_local, acts, lhs)
-    else
-      register_buf_locals(buf_local, acts, lhs)
+      config.groups[mode] = lib.coalesce { config.groups[mode], {} }
+      config.groups[mode][lhs] = name
     end
   else
-    for mode, act in pairs(acts) do
-      global_config[mode][lhs] = act
-    end
+    lib.throw_error(lib.concat { trace, "name" }, { "string", "nil" }, "value", name)
+  end
+end
+
+local function fill_mappings(trace, config, lhs, rhs, modes, opts)
+  if rhs == nil then
+    return
   end
 
-  for k, c in pairs(config) do
+  if lib.type_in(rhs, { "string", "function" }) then
+    for _, mode in ipairs(modes) do
+      config.mappings[mode] = lib.coalesce { config.mappings[mode], {} }
+      config.mappings[mode][lhs] = {
+        rhs = rhs,
+        opts = opts,
+      }
+    end
+  elseif type(rhs) == "table" then
+    for mode, rhs_ in pairs(rhs) do
+      if lib.type_in(rhs_, { "string", "function" }) then
+        config.mappings[mode] = lib.coalesce { config.mappings[mode], {} }
+        config.mappings[mode][lhs] = {
+          rhs = rhs_,
+          opts = opts,
+        }
+      else
+        lib.throw_error(lib.concat { trace, "act", mode }, { "string", "function" }, "value", rhs)
+      end
+    end
+  else
+    lib.throw_error(lib.concat { trace, "act" }, { "string", "function", "table" }, "value", rhs)
+  end
+end
+
+local function fill_autocommands(trace, config, lhs, rhs, modes, opts, when, name)
+  if when == nil or #when == 0 then
+    return
+  end
+
+  for _, au in ipairs(when) do
+    local key = mk_autocmd_key(trace, au)
+    local au_config = config.autocommands[key] or mk_empty_config()
+    config.autocommands[key] = au_config
+
+    au_config.when = au
+    fill_groups(trace, au_config, lhs, modes, name)
+    fill_mappings(trace, au_config, lhs, rhs, modes, opts)
+  end
+end
+
+local function fill_config(trace, config, node, lhs, parent_modes, parent_opts, parent_when)
+  local modes = mk_modes(node, parent_modes)
+  local opts = mk_opts(node, parent_opts)
+  local when = mk_when(node, parent_when)
+  lhs = lhs or ""
+
+  if #when == 0 then
+    fill_groups(trace, config, lhs, modes, node.name)
+    fill_mappings(trace, config, lhs, node.act, modes, opts)
+  else
+    fill_autocommands(trace, config, lhs, node.act, modes, opts, when, node.name)
+  end
+
+  for k, child in pairs(node) do
     if not vim.tbl_contains(opt_keys, k) then
       local new_lhs
       if type(k) == "string" then
@@ -171,41 +189,48 @@ function M.fill(args)
       elseif type(k) == "number" then
         new_lhs = lhs
       else
-        error(string.format("Expected number or string as config key, but got %s", type(k)))
+        lib.throw_error(trace, { "number", "string" }, "config key", k)
       end
 
-      if type(c) == "function" then
-        c = c()
-      elseif type(c) ~= "table" then
-        error(string.format("Expected table or function as config body, but got %s", type(c)))
+      if type(child) == "function" then
+        child = child()
+      elseif type(child) ~= "table" then
+        lib.throw_error(lib.concat { trace, k }, { "table", "function" }, "config body", child)
       end
 
-      M.fill {
-        wk = wk,
-        global_config = global_config,
-        config = c,
-        lhs = new_lhs,
-        parent_modes = modes,
-        parent_opts = opts,
-        parent_buf_local = buf_local,
-      }
+      fill_config(lib.concat { trace, k }, config, child, new_lhs, modes, opts, when)
     end
   end
 end
 
-function M.empty_global_config()
-  return {
-    n = {},
-    v = {},
-    s = {},
-    x = {},
-    o = {},
-    i = {},
-    l = {},
-    c = {},
-    t = {},
-    ["!"] = {},
-  }
+function M.mk_config(root)
+  local config = mk_empty_config()
+  config.autocommands = {}
+  fill_config({ "root" }, config, root)
+  return config
+end
+
+function M.setup_autocommands(autocommands, setup_config)
+  for _, au in pairs(autocommands) do
+    local callback
+    if au.when.condition == nil then
+      callback = function(e)
+        setup_config(au, { buffer = e.buf })
+      end
+    else
+      callback = function(e)
+        if au.when.condition(e) then
+          setup_config(au, { buffer = e.buf })
+        end
+      end
+    end
+
+    vim.api.nvim_create_autocmd(au.when.event, {
+      pattern = au.when.pattern,
+      group = au.when.group,
+      callback = callback,
+    })
+  end
 end
 
 return M
