@@ -6,7 +6,7 @@ local M = {}
 ---@field act? Rhs
 ---@field name? string
 ---@field mode? Mode | Modes
----@field buf_local? When
+---@field buf_local? When[]
 
 ---@class GlobalConfig : Config
 ---@field autocommands {AuKey: AuConfig}
@@ -95,9 +95,9 @@ local function mk_opts(node, parent_opts)
   }
 end
 
----@param node any
----@param parent_buf_local? When
----@return When
+---@param node Node
+---@param parent_buf_local? When[]
+---@return When[]
 local function mk_when(node, parent_buf_local)
   if node.buf_local == nil and node.buf_local_extend == nil then
     return parent_buf_local or {}
@@ -225,7 +225,7 @@ end
 ---@param rhs Rhs
 ---@param modes Modes
 ---@param opts Opts
----@param when When
+---@param when When[]
 ---@param name? string
 local function fill_autocommands(trace, config, lhs, rhs, modes, opts, when, name)
   if when == nil or #when == 0 then
@@ -249,7 +249,7 @@ end
 ---@param lhs? string
 ---@param parent_modes? Modes
 ---@param parent_opts? Opts
----@param parent_when? When
+---@param parent_when? When[]
 local function fill_config(trace, config, node, lhs, parent_modes, parent_opts, parent_when)
   local modes = mk_modes(node, parent_modes)
   local opts = mk_opts(node, parent_opts)
