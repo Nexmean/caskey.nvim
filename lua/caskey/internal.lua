@@ -2,18 +2,28 @@ local lib = require "caskey.lib"
 
 local M = {}
 
----@class Node : Opts, { [integer]: Node }, { [string]: Node }, function(): Node
+---@class Node : Opts, { [integer]: NodeF }, { [string]: NodeF }
 ---@field act? Rhs
 ---@field name? string
 ---@field mode? Mode | Modes
----@field buf_local? When[]
+---@field mode_extend? Mode | Modes
+---@field when? RelaxedWhenList
+---@field when_extend? RelaxedWhenList
+---@field buf_local? RelaxedWhenList
+---@field buf_local_extend? RelaxedWhenList
 
----@class GlobalConfig : Config
----@field autocommands {AuKey: AuConfig}
+---@alias NodeF Node | function(): Node
+
+---@alias RelaxedWhen string | When
+
+---@alias RelaxedWhenList RelaxedWhen | RelaxedWhen[]
 
 ---@class Config
 ---@field groups {Mode: {Lhs: string}}
 ---@field mappings {Mode: {Lhs: Mapping}}
+
+---@class GlobalConfig : Config
+---@field autocommands {AuKey: AuConfig}
 
 ---@class AuConfig : Config
 ---@field when When
@@ -54,19 +64,21 @@ local function mk_empty_config()
 end
 
 local opt_keys = {
-  "act",
-  "buffer",
-  "buf_local",
-  "buf_local_extend",
-  "desc",
-  "expr",
-  "mode",
-  "mode_extend",
-  "name",
-  "noremap",
-  "nowait",
-  "silent",
-  "unique",
+  ["act"] = true,
+  ["buf_local"] = true,
+  ["buf_local_extend"] = true,
+  ["buffer"] = true,
+  ["desc"] = true,
+  ["expr"] = true,
+  ["mode"] = true,
+  ["mode_extend"] = true,
+  ["name"] = true,
+  ["noremap"] = true,
+  ["nowait"] = true,
+  ["silent"] = true,
+  ["unique"] = true,
+  ["when"] = true,
+  ["when_extend"] = true,
 }
 
 ---@param node any
@@ -95,17 +107,69 @@ local function mk_opts(node, parent_opts)
   }
 end
 
----@param node Node
----@param parent_buf_local? When[]
+---@param trace Trace
+---@param when_list RelaxedWhenList
 ---@return When[]
-local function mk_when(node, parent_buf_local)
-  if node.buf_local == nil and node.buf_local_extend == nil then
-    return parent_buf_local or {}
+local function from_relaxed_when_list(trace, when_list)
+  if when_list == nil then
+    return {}
+  elseif type(when_list) == "string" then
+    return { { event = when_list } }
+  elseif type(when_list) == "table" then
+    if when_list.event ~= nil then
+      return { when_list }
+    else
+      local res = {}
+      for i, when in ipairs(when_list) do
+        if type(when) == "string" then
+          table.insert(res, { event = when })
+        elseif type(when) == "table" and when.event ~= nil then
+          table.insert(res, when)
+        else
+          lib.throw_error(
+            lib.concat { trace, "when", i },
+            { "string", "table where event~=nil" },
+            "value",
+            when
+          )
+        end
+      end
+      return res
+    end
+  else
+    lib.throw_error(
+      lib.concat { trace, "when" },
+      { "string", "table where event~=nil", "table of event descriptions" },
+      "value",
+      when_list
+    )
+  end
+end
+
+---@param trace Trace
+---@param node Node
+---@param parent_when? When[]
+---@return When[]
+local function mk_when(trace, node, parent_when)
+  if
+    node.buf_local == nil
+    and node.buf_local_extend == nil
+    and node.when == nil
+    and node.when_extend == nil
+  then
+    return parent_when or {}
   end
 
   return lib.concat {
-    lib.coalesce { node.buf_local, parent_buf_local, {} },
-    lib.coalesce { node.buf_local_extend, {} },
+    lib.coalesce {
+      from_relaxed_when_list(trace, lib.coalesce { node.when, node.buf_local }),
+      parent_when,
+      {},
+    },
+    lib.coalesce {
+      from_relaxed_when_list(trace, lib.coalesce { node.when_extend, node.buf_local_extend }),
+      {},
+    },
   }
 end
 
@@ -253,7 +317,7 @@ end
 local function fill_config(trace, config, node, lhs, parent_modes, parent_opts, parent_when)
   local modes = mk_modes(node, parent_modes)
   local opts = mk_opts(node, parent_opts)
-  local when = mk_when(node, parent_when)
+  local when = mk_when(trace, node, parent_when)
   lhs = lhs or ""
 
   if #when == 0 then
@@ -264,7 +328,7 @@ local function fill_config(trace, config, node, lhs, parent_modes, parent_opts, 
   end
 
   for k, child in pairs(node) do
-    if not vim.tbl_contains(opt_keys, k) then
+    if not opt_keys[k] then
       local new_lhs
       if type(k) == "string" then
         new_lhs = lhs .. k
