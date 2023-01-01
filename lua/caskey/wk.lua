@@ -4,6 +4,10 @@ local utils = require "caskey.utils"
 
 local M = vim.tbl_extend("keep", utils, {})
 
+---@class WkConfig : Config
+---@field wk any
+
+---@param config Config
 local function mk_wk_configs(config)
   local wk_configs = {}
   local all_modes =
@@ -17,7 +21,7 @@ local function mk_wk_configs(config)
     for lhs, mapping in pairs(config.mappings[mode] or {}) do
       mode_config[1][lhs] = lib.coalesce { mode_config[1][lhs], {} }
       mode_config[1][lhs][1] = mapping.rhs
-      mode_config[1][lhs][2] = mapping.opts.desc
+      mode_config[1][lhs][2] = mapping.opts.desc or ""
       mode_config[1][lhs] = vim.tbl_extend("error", mode_config[1][lhs], mapping.opts)
     end
 
@@ -27,12 +31,15 @@ local function mk_wk_configs(config)
   return wk_configs
 end
 
+---@param config GlobalConfig
 local function patch_autocommands(config)
   for _, au in pairs(config.autocommands) do
     au.wk = mk_wk_configs(au)
   end
 end
 
+---@param config WkConfig
+---@param add_opts? Opts
 local function setup_config(config, add_opts)
   local wk = require "which-key"
   for _, wk_config in ipairs(config.wk) do
@@ -40,6 +47,7 @@ local function setup_config(config, add_opts)
   end
 end
 
+---@param root Node
 function M.setup(root)
   local wk = require "which-key"
   local config = internal.mk_config(root)

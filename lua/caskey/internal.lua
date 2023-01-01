@@ -2,6 +2,48 @@ local lib = require "caskey.lib"
 
 local M = {}
 
+---@class Node : Opts, { [integer]: Node }, { [string]: Node }, function(): Node
+---@field mode? Mode | Modes
+---@field buf_local? When
+
+---@class GlobalConfig : Config
+---@field autocommands {AuKey: AuConfig}
+
+---@class Config
+---@field groups {Mode: {Lhs: string}}
+---@field mappings {Mode: {Lhs: Mapping}}
+
+---@class AuConfig : Config
+---@field when When
+
+---@class Mapping
+---@field rhs string | function
+---@field opts Opts
+
+---@alias Modes string[]
+
+---@class Opts
+---@field desc? string
+---@field expr? boolean
+---@field noremap? boolean
+---@field nowait? boolean
+---@field silent? boolean
+---@field unique? boolean
+---@field buffer? boolean
+
+---@class When
+---@field event string | string[]
+---@field pattern? string | string[]
+---@field group? string
+---@field condition? function(event: any): boolean
+
+---@alias NodesList Node[]
+---@alias NodesMap {Lhs: Node}
+---@alias AuKey string | When
+---@alias Mode string
+---@alias Lhs string
+---@alias Rhs string | function | {string: function}
+
 local function mk_empty_config()
   return {
     groups = {},
@@ -25,6 +67,9 @@ local opt_keys = {
   "unique",
 }
 
+---@param node any
+---@param parent_modes? Modes
+---@return Modes
 local function mk_modes(node, parent_modes)
   return vim.tbl_flatten {
     lib.coalesce { node.mode, parent_modes, {} },
@@ -32,10 +77,13 @@ local function mk_modes(node, parent_modes)
   }
 end
 
+---@param node any
+---@param parent_opts? Opts
+---@return Opts
 local function mk_opts(node, parent_opts)
   parent_opts = lib.coalesce { parent_opts, {} }
   return {
-    desc = lib.coalesce { node.desc, "" },
+    desc = lib.coalesce { node.desc },
     expr = lib.coalesce { node.expr, parent_opts.expr, false },
     noremap = lib.coalesce { node.noremap, parent_opts.noremap, true },
     nowait = lib.coalesce { node.nowait, parent_opts.nowait, false },
@@ -45,6 +93,9 @@ local function mk_opts(node, parent_opts)
   }
 end
 
+---@param node any
+---@param parent_buf_local? When
+---@return When
 local function mk_when(node, parent_buf_local)
   if node.buf_local == nil and node.buf_local_extend == nil then
     return parent_buf_local or {}
@@ -56,6 +107,9 @@ local function mk_when(node, parent_buf_local)
   }
 end
 
+---@param trace Trace
+---@param au When
+---@return AuKey
 local function mk_autocmd_key(trace, au)
   if au.condition ~= nil then
     return au
@@ -107,6 +161,11 @@ local function mk_autocmd_key(trace, au)
   return key
 end
 
+---@param trace Trace
+---@param config any
+---@param lhs string
+---@param modes Modes
+---@param name? string
 local function fill_groups(trace, config, lhs, modes, name)
   if name == nil then
     return
@@ -122,6 +181,12 @@ local function fill_groups(trace, config, lhs, modes, name)
   end
 end
 
+---@param trace Trace
+---@param config Config
+---@param lhs string
+---@param rhs? Rhs
+---@param modes Modes
+---@param opts Opts
 local function fill_mappings(trace, config, lhs, rhs, modes, opts)
   if rhs == nil then
     return
@@ -152,6 +217,14 @@ local function fill_mappings(trace, config, lhs, rhs, modes, opts)
   end
 end
 
+---@param trace Trace
+---@param config GlobalConfig
+---@param lhs string
+---@param rhs Rhs
+---@param modes Modes
+---@param opts Opts
+---@param when When
+---@param name? string
 local function fill_autocommands(trace, config, lhs, rhs, modes, opts, when, name)
   if when == nil or #when == 0 then
     return
@@ -168,6 +241,13 @@ local function fill_autocommands(trace, config, lhs, rhs, modes, opts, when, nam
   end
 end
 
+---@param trace Trace
+---@param config GlobalConfig
+---@param node any
+---@param lhs? string
+---@param parent_modes? Modes
+---@param parent_opts? Opts
+---@param parent_when? When
 local function fill_config(trace, config, node, lhs, parent_modes, parent_opts, parent_when)
   local modes = mk_modes(node, parent_modes)
   local opts = mk_opts(node, parent_opts)
@@ -203,6 +283,7 @@ local function fill_config(trace, config, node, lhs, parent_modes, parent_opts, 
   end
 end
 
+---@param root Node
 function M.mk_config(root)
   local config = mk_empty_config()
   config.autocommands = {}
@@ -210,6 +291,8 @@ function M.mk_config(root)
   return config
 end
 
+---@param autocommands {AuKey: AuConfig}
+---@param setup_config function(au: AuConfig, opts: Opts)
 function M.setup_autocommands(autocommands, setup_config)
   for _, au in pairs(autocommands) do
     local callback

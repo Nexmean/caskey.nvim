@@ -1,8 +1,18 @@
 local M = {}
 
---- intercalate strings by separator
--- @param ss list of strings
--- @param sep separator
+---@alias typename
+---| "nil"
+---| "boolean"
+---| "string"
+---| "number"
+---| "table"
+---| "function"
+---| "thread"
+---| "userdata"
+
+---intercalate strings by separator
+---@param ss string[]
+---@param sep string
 function M.intercalate(ss, sep)
   if #ss < 1 then
     return ""
@@ -19,7 +29,10 @@ function M.intercalate(ss, sep)
   return res
 end
 
--- @param trace Path in config, list of strings and numbers
+---@alias Trace (string | number)[]
+
+---@param trace Trace
+---@return string
 function M.format_trace(trace)
   return M.intercalate(
     vim.tbl_map(function(trace_chunk)
@@ -33,11 +46,10 @@ function M.format_trace(trace)
   )
 end
 
--- @param trace Path in config
--- @param[opt] trace_tail Formatted path for known properties
--- @param expected List of expected types
--- @param key_value Where got unexpected value, in table key or value
--- @param got Actual value
+---@param trace Trace
+---@param expected string[]
+---@param label string
+---@param got any
 function M.throw_error(trace, expected, label, got)
   local got_string
   if type(got) == "string" then
@@ -59,7 +71,10 @@ function M.throw_error(trace, expected, label, got)
   )
 end
 
---- like vim.tbl_flatten, but only for 1 nestings level
+---like vim.tbl_flatten, but only for 1 nestings level
+---@generic T
+---@param t (T | T[])[]
+---@return T[]
 function M.concat(t)
   local res = {}
   for _, tt in ipairs(t) do
@@ -75,11 +90,17 @@ function M.concat(t)
   return res
 end
 
+---@param v any
+---@param types typename[]
+---@return boolean
 function M.type_in(v, types)
   return vim.tbl_contains(types, type(v))
 end
 
---- returns copy of input table without duplicate
+---returns copy of input table without duplicate
+---@generic T
+---@param t T[]
+---@return T[]
 function M.nub(t)
   table.sort(t)
   local res = {}
@@ -96,7 +117,7 @@ function M.nub(t)
   return res
 end
 
---- returns first non nil value in a table
+---returns first non nil value in a table
 function M.coalesce(args)
   local i = 1
   while i <= #args do
