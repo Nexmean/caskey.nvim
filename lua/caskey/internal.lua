@@ -3,6 +3,8 @@ local lib = require "caskey.lib"
 local M = {}
 
 ---@class Node : Opts, { [integer]: Node }, { [string]: Node }, function(): Node
+---@field act? Rhs
+---@field name? string
 ---@field mode? Mode | Modes
 ---@field buf_local? When
 
@@ -29,7 +31,7 @@ local M = {}
 ---@field nowait? boolean
 ---@field silent? boolean
 ---@field unique? boolean
----@field buffer? boolean
+---@field buffer? integer
 
 ---@class When
 ---@field event string | string[]
@@ -243,7 +245,7 @@ end
 
 ---@param trace Trace
 ---@param config GlobalConfig
----@param node any
+---@param node Node
 ---@param lhs? string
 ---@param parent_modes? Modes
 ---@param parent_opts? Opts
