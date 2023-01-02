@@ -95,7 +95,7 @@ return {
 
       mode = "n",
 
-      -- Sometimes there aren't event that describes that you need to setup buffer local mappings.
+      -- Sometimes there aren't events which describe that you need to setup buffer local mappings.
       -- For such cases you can use custom events.
       -- Caskey provides api for emitting then:
       --   -- nvim/lua/user/plugins/gitsigns.lua
