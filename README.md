@@ -97,7 +97,7 @@ return {
 
       -- Sometimes there aren't events which describe that you need to setup buffer local mappings.
       -- For such cases you can use custom events.
-      -- Caskey provides api for emitting then:
+      -- Caskey provides api for emitting them:
       --   -- nvim/lua/user/plugins/gitsigns.lua
       --   ...
       --   on_attach = function (bufnr)
