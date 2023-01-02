@@ -5,7 +5,7 @@ Declarative **cas**cade **key** mappings configuration
 - Define all your keymaps as simple lua tables
 - Group keymaps the way you think about them
 - Modular, declarative way to define keymaps
-- It's as easy to define buffer local keymaps as global
+- Automatically registers autocommands to setup buffer local keymappings
 - [Which-key](https://github.com/folke/which-key.nvim) integration out of the box
 
 ## 📦 Installation
@@ -69,7 +69,7 @@ return {
   ["q"] = {
     act = ck.cmd "close",
     desc = "close window",
-    buf_local = {
+    when = {
       ck.ft "Outline",
       ck.bt {"quickfix", "help"},
       -- that is equivalent to:
@@ -106,14 +106,14 @@ return {
 
   {
     mode = "n",
-    buf_local = {{event = "LspAttach"}},
+    when = "LspAttach",
     ["gd"] = {act = ck.cmd "Telescope lsp_definitions", desc = "lsp definition"},
     ["<C-s>"] = {
       act = ck.cmd "SymbolsOutline",
       desc = "toggle outline",
       -- extend mode or buffer local configuration
       mode_extend = "v",
-      buf_local_extend = {ck.ft "Outline"},
+      when_extend = ck.ft "Outline",
     },
   }
 }
