@@ -361,15 +361,22 @@ end
 ---@param setup_config function(au: AuConfig, opts: Opts)
 function M.setup_autocommands(autocommands, setup_config)
   for _, au in pairs(autocommands) do
+    local get_buffer
+    if au.when.event == "User" and au.when.pattern == "caskey.nvim" then
+      get_buffer = function (e) return e.data.buf end
+    else
+      get_buffer = function (e) return e.buf end
+    end
+
     local callback
     if au.when.condition == nil then
       callback = function(e)
-        setup_config(au, { buffer = e.buf })
+        setup_config(au, { buffer = get_buffer(e) })
       end
     else
       callback = function(e)
         if au.when.condition(e) then
-          setup_config(au, { buffer = e.buf })
+          setup_config(au, { buffer = get_buffer(e) })
         end
       end
     end

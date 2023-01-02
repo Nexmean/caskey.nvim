@@ -93,7 +93,20 @@ return {
     return {
       name = "hunk",
 
-      mode = "n"
+      mode = "n",
+
+      -- Sometimes there aren't event that describes that you need to setup buffer local mappings.
+      -- For such cases you can use custom events.
+      -- Caskey provides api for emitting then:
+      --   -- nvim/lua/user/plugins/gitsigns.lua
+      --   ...
+      --   on_attach = function (bufnr)
+      --     require("caskey").emit("Gitsigns", bufnr)
+      --   end
+      --   ...
+      -- 
+      -- And then you can use `ck.emit` to describe when to setup mappings
+      when = ck.emitted "Gitsigns",
 
       s = {act = gs.stage_hunk     , desc = "stage hunk"},
       r = {act = gs.reset_hunk     , desc = "rest hunk"},
@@ -115,7 +128,7 @@ return {
       mode_extend = "v",
       when_extend = ck.ft "Outline",
     },
-  }
+  },
 }
 ```
 
