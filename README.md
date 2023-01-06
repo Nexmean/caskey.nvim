@@ -140,3 +140,5 @@ Or if you want which-key integration:
 ```lua
 require("caskey.wk").setup(require("user.mappings"))
 ```
+
+Config structure description could be found [here](https://github.com/Nexmean/caskey.nvim/wiki/Config-structure)
